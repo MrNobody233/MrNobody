@@ -3,7 +3,7 @@
     <el-card class="login-card">
       <template #header>
         <div class="card-header">
-          <h2>{{ isLogin ? '登录' : '注册' }} - 博客后台管理</h2>
+          <h2>{{ isLogin ? '登录' : '注册' }} - MrNobody Admin</h2>
         </div>
       </template>
 

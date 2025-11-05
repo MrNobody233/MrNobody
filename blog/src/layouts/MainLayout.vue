@@ -5,7 +5,7 @@
       <div class="header-content">
         <div class="header-left">
           <router-link to="/" class="logo">
-            <h1>我的博客</h1>
+            <h1>MrNobody</h1>
           </router-link>
         </div>
 
@@ -55,24 +55,16 @@
             </el-icon>
           </el-button>
 
-          <el-dropdown v-if="authStore.user" @command="handleUserCommand">
-            <div class="user-info">
-              <el-icon><User /></el-icon>
-              <span>{{ authStore.user.email }}</span>
-            </div>
+          <el-dropdown trigger="click" @command="handleFxCommand">
+            <el-button type="default" @click.stop>
+              <el-icon><Setting /></el-icon>
+            </el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="logout">
-                  <el-icon><SwitchButton /></el-icon>
-                  退出登录
-                </el-dropdown-item>
+                <el-dropdown-item command="open-settings">站点设置</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-
-          <el-button v-else type="primary" @click="goToLogin">
-            登录
-          </el-button>
         </div>
       </div>
     </header>
@@ -91,27 +83,57 @@
     <!-- 页脚 -->
     <footer class="footer">
       <div class="footer-content">
-        <p>© 2024 我的博客. All rights reserved.</p>
+        <p>© 2024 MrNobody. All rights reserved.</p>
       </div>
     </footer>
+
+    <el-dialog 
+      v-model="settingsVisible" 
+      title="站点设置" 
+      width="520px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+    >
+      <el-form label-width="100px">
+        <el-form-item label="启用特效">
+          <el-switch v-model="effectEnabled" />
+        </el-form-item>
+        <el-form-item label="特效模式">
+          <el-select v-model="effectMode" style="width: 260px">
+            <el-option label="烟花" value="fireworks" />
+            <el-option label="爱心" value="hearts" />
+            <el-option label="纸屑" value="confetti" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cancelSettings">取消</el-button>
+          <el-button type="primary" @click="applySettings">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { useAuthStore } from '@/stores/auth'
+import { ElMessage } from 'element-plus'
 import { useThemeStore } from '@/stores/theme'
 import { supabase } from '@/lib/supabase'
 import type { Category } from '@/lib/supabase'
+import { initClickFireworks, setEffectMode, getEffectMode, setEffectEnabled, getEffectEnabled } from '@/lib/fireworks'
 
 const router = useRouter()
-const authStore = useAuthStore()
 const themeStore = useThemeStore()
 
 const searchQuery = ref('')
 const categories = ref<Category[]>([])
+const effectMode = ref(getEffectMode())
+const effectEnabled = ref(getEffectEnabled())
+const settingsVisible = ref(false)
 
 const loadCategories = async () => {
   const { data, error } = await supabase
@@ -134,32 +156,33 @@ const handleCategoryClick = (slug: string) => {
   router.push(`/category/${slug}`)
 }
 
-const goToLogin = () => {
-  router.push('/login')
-}
-
-const handleUserCommand = async (command: string) => {
-  if (command === 'logout') {
-    try {
-      await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-        type: 'warning'
-      })
-      const { error } = await authStore.signOut()
-      if (error) {
-        ElMessage.error(error)
-      } else {
-        ElMessage.success('已退出登录')
-        router.push('/')
-      }
-    } catch {
-      // 用户取消
-    }
+function handleFxCommand(command: string) {
+  if (command === 'open-settings') {
+    // 打开前同步为已保存的设置，避免上次未保存的临时修改残留
+    effectMode.value = getEffectMode()
+    effectEnabled.value = getEffectEnabled()
+    settingsVisible.value = true
   }
 }
 
 onMounted(() => {
   loadCategories()
+  initClickFireworks()
 })
+
+function applySettings() {
+  setEffectEnabled(effectEnabled.value)
+  setEffectMode(effectMode.value as any)
+  ElMessage.success('设置已保存')
+  settingsVisible.value = false
+}
+
+function cancelSettings() {
+  // 取消时还原到已保存的值
+  effectMode.value = getEffectMode()
+  effectEnabled.value = getEffectEnabled()
+  settingsVisible.value = false
+}
 </script>
 
 <style scoped lang="scss">
