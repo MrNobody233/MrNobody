@@ -46,16 +46,30 @@
 
           <el-dropdown trigger="click" @command="handleCommand">
             <div class="user-info" @click.stop>
-              <el-icon><User /></el-icon>
-              <span>{{ authStore.user?.email }}</span>
+              <el-avatar
+                v-if="profileStore.profile?.avatar_url"
+                :src="profileStore.profile.avatar_url"
+                :size="32"
+                fit="cover"
+              />
+              <el-avatar
+                v-else
+                :size="32"
+                :icon="User"
+              />
+              <span>{{ profileStore.profile?.username || authStore.user?.email }}</span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-            <el-dropdown-item command="fx-settings">
-              <el-icon><Setting /></el-icon>
-              特效设置
-            </el-dropdown-item>
-                <el-dropdown-item command="logout">
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>
+                  个人资料
+                </el-dropdown-item>
+                <el-dropdown-item command="fx-settings">
+                  <el-icon><Setting /></el-icon>
+                  特效设置
+                </el-dropdown-item>
+                <el-dropdown-item divided command="logout">
                   <el-icon><SwitchButton /></el-icon>
                   退出登录
                 </el-dropdown-item>
@@ -105,16 +119,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { useProfileStore } from '@/stores/profile'
 import { useThemeStore } from '@/stores/theme'
 import { initClickFireworks, getEffectMode, getEffectEnabled, setEffectMode, setEffectEnabled } from '@/lib/fireworks'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const profileStore = useProfileStore()
 const themeStore = useThemeStore()
 
 const currentRoute = computed(() => route.path)
@@ -137,7 +153,9 @@ const breadcrumb = computed(() => {
 })
 
 const handleCommand = async (command: string) => {
-  if (command === 'fx-settings') {
+  if (command === 'profile') {
+    router.push('/profile')
+  } else if (command === 'fx-settings') {
     // 打开前同步为已保存的设置，避免上次未保存的临时修改残留
     effectMode.value = getEffectMode()
     effectEnabled.value = getEffectEnabled()
@@ -147,21 +165,38 @@ const handleCommand = async (command: string) => {
       await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
         type: 'warning'
       })
-      const { error } = await authStore.signOut()
-      if (error) {
-        ElMessage.error(error)
-      } else {
-        ElMessage.success('已退出登录')
-        router.push('/login')
-      }
+      // 无论是否成功都跳转到登录页
+      await authStore.signOut()
+      ElMessage.success('已退出登录')
+      router.push('/login')
     } catch {
-      // 用户取消
+      // 用户取消或出错，都跳转到登录页
+      router.push('/login')
     }
   }
 }
 
+// 加载用户资料
+const loadProfile = async () => {
+  if (authStore.user?.id) {
+    await profileStore.loadProfile(authStore.user.id)
+  }
+}
+
+// 监听用户登录状态
+watch(() => authStore.user, (newUser) => {
+  if (newUser) {
+    loadProfile()
+  } else {
+    profileStore.reset()
+  }
+})
+
 onMounted(() => {
   initClickFireworks()
+  if (authStore.user) {
+    loadProfile()
+  }
 })
 
 const effectMode = ref(getEffectMode())
@@ -252,4 +287,5 @@ function cancelEffectSettings() {
   }
 }
 </style>
+
 

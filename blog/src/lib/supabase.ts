@@ -59,3 +59,12 @@ export interface PostTag {
   created_at: string
 }
 
+export interface Profile {
+  id: string
+  username?: string
+  avatar_url?: string
+  bio?: string
+  created_at: string
+  updated_at: string
+}
+

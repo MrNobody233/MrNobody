@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -33,11 +32,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/Search.vue')
       }
     ]
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: () => import('@/views/Login.vue')
   }
 ]
 
@@ -51,18 +45,6 @@ const router = createRouter({
       return { top: 0 }
     }
   }
-})
-
-// 路由守卫
-router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore()
-  
-  // 初始化认证状态
-  if (authStore.user === null && !authStore.loading) {
-    await authStore.initialize()
-  }
-
-  next()
 })
 
 export default router

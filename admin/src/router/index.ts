@@ -39,6 +39,11 @@ const routes: RouteRecordRaw[] = [
         path: '/tags',
         name: 'Tags',
         component: () => import('@/views/Tags/index.vue')
+      },
+      {
+        path: '/profile',
+        name: 'Profile',
+        component: () => import('@/views/Profile.vue')
       }
     ]
   }

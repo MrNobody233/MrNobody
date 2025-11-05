@@ -11,6 +11,24 @@
           </el-tag>
           <span class="post-date">发布于 {{ formatDate(post.created_at) }}</span>
         </div>
+        <!-- 作者信息 -->
+        <div class="post-author" v-if="authorProfile">
+          <el-avatar
+            v-if="authorProfile.avatar_url"
+            :src="authorProfile.avatar_url"
+            :size="40"
+            fit="cover"
+          />
+          <el-avatar
+            v-else
+            :size="40"
+            :icon="User"
+          />
+          <div class="author-info">
+            <div class="author-name">{{ authorProfile.username || '作者' }}</div>
+            <div class="author-bio" v-if="authorProfile.bio">{{ authorProfile.bio }}</div>
+          </div>
+        </div>
       </div>
 
       <!-- 封面图片 -->
@@ -38,8 +56,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { User } from '@element-plus/icons-vue'
 import { supabase } from '@/lib/supabase'
-import type { Post } from '@/lib/supabase'
+import type { Post, Profile } from '@/lib/supabase'
 import MarkdownIt from 'markdown-it'
 import markdownItMark from 'markdown-it-mark'
 
@@ -47,6 +66,7 @@ const route = useRoute()
 const router = useRouter()
 
 const post = ref<Post | null>(null)
+const authorProfile = ref<Profile | null>(null)
 const loading = ref(false)
 
 // 初始化 Markdown 解析器
@@ -90,6 +110,19 @@ const loadPost = async () => {
     if (error) throw error
 
     post.value = data as Post
+
+    // 加载作者信息
+    if (post.value.author_id) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', post.value.author_id)
+        .single()
+
+      if (!profileError && profileData) {
+        authorProfile.value = profileData
+      }
+    }
   } catch (error: any) {
     ElMessage.error('加载文章失败: ' + error.message)
   } finally {
@@ -136,11 +169,38 @@ onMounted(() => {
         align-items: center;
         gap: 8px;
         flex-wrap: wrap;
+        margin-bottom: 16px;
 
         .post-date {
           margin-left: 8px;
           color: var(--el-text-color-secondary);
           font-size: 14px;
+        }
+      }
+
+      .post-author {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        background-color: var(--el-fill-color-lighter);
+        border-radius: 8px;
+        margin-top: 16px;
+
+        .author-info {
+          flex: 1;
+
+          .author-name {
+            font-weight: 600;
+            color: var(--el-text-color-primary);
+            margin-bottom: 4px;
+          }
+
+          .author-bio {
+            font-size: 13px;
+            color: var(--el-text-color-secondary);
+            line-height: 1.4;
+          }
         }
       }
     }

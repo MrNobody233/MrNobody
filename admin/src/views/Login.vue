@@ -3,7 +3,7 @@
     <el-card class="login-card">
       <template #header>
         <div class="card-header">
-          <h2>{{ isLogin ? '登录' : '注册' }} - MrNobody Admin</h2>
+          <h2>登录 - 博客后台管理</h2>
         </div>
       </template>
 
@@ -33,14 +33,10 @@
           />
         </el-form-item>
 
-        <el-form-item v-if="!isLogin" prop="confirmPassword">
-          <el-input
-            v-model="form.confirmPassword"
-            type="password"
-            placeholder="确认密码"
-            prefix-icon="Lock"
-            show-password
-          />
+        <el-form-item>
+          <div class="login-options">
+            <el-checkbox v-model="rememberMe">记住密码</el-checkbox>
+          </div>
         </el-form-item>
 
         <el-form-item>
@@ -50,16 +46,10 @@
             :loading="authStore.loading"
             @click="handleSubmit"
           >
-            {{ isLogin ? '登录' : '注册' }}
+            登录
           </el-button>
         </el-form-item>
       </el-form>
-
-      <div class="login-footer">
-        <el-button type="text" @click="isLogin = !isLogin">
-          {{ isLogin ? '还没有账号？去注册' : '已有账号？去登录' }}
-        </el-button>
-      </div>
     </el-card>
 
     <div class="theme-toggle">
@@ -76,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -86,26 +76,38 @@ const router = useRouter()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 
-const isLogin = ref(true)
 const formRef = ref<FormInstance>()
+const rememberMe = ref(false)
 
 const form = reactive({
   email: '',
-  password: '',
-  confirmPassword: ''
+  password: ''
 })
 
-const validateConfirmPassword = (rule: any, value: any, callback: any) => {
-  if (!isLogin.value) {
-    if (value === '') {
-      callback(new Error('请再次输入密码'))
-    } else if (value !== form.password) {
-      callback(new Error('两次输入密码不一致'))
-    } else {
-      callback()
+// 从 localStorage 加载记住的密码
+const loadRememberedCredentials = () => {
+  const remembered = localStorage.getItem('remembered_credentials')
+  if (remembered) {
+    try {
+      const credentials = JSON.parse(remembered)
+      form.email = credentials.email || ''
+      form.password = credentials.password || ''
+      rememberMe.value = true
+    } catch (e) {
+      console.error('加载记住的密码失败:', e)
     }
+  }
+}
+
+// 保存记住的密码
+const saveRememberedCredentials = () => {
+  if (rememberMe.value) {
+    localStorage.setItem('remembered_credentials', JSON.stringify({
+      email: form.email,
+      password: form.password
+    }))
   } else {
-    callback()
+    localStorage.removeItem('remembered_credentials')
   }
 }
 
@@ -117,9 +119,6 @@ const rules = reactive<FormRules>({
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码长度至少6位', trigger: 'blur' }
-  ],
-  confirmPassword: [
-    { validator: validateConfirmPassword, trigger: 'blur' }
   ]
 })
 
@@ -129,29 +128,21 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (!valid) return
 
-    if (isLogin.value) {
-      // 登录
-      const { error } = await authStore.signIn(form.email, form.password)
-      if (error) {
-        ElMessage.error(error)
-      } else {
-        ElMessage.success('登录成功')
-        router.push('/')
-      }
+    const { error } = await authStore.signIn(form.email, form.password)
+    if (error) {
+      ElMessage.error(error)
     } else {
-      // 注册
-      const { error } = await authStore.signUp(form.email, form.password)
-      if (error) {
-        ElMessage.error(error)
-      } else {
-        ElMessage.success('注册成功，请登录')
-        isLogin.value = true
-        form.password = ''
-        form.confirmPassword = ''
-      }
+      // 保存或清除记住的密码
+      saveRememberedCredentials()
+      ElMessage.success('登录成功')
+      router.push('/')
     }
   })
 }
+
+onMounted(() => {
+  loadRememberedCredentials()
+})
 </script>
 
 <style scoped lang="scss">
@@ -182,6 +173,12 @@ const handleSubmit = async () => {
   .login-footer {
     text-align: center;
     margin-top: 16px;
+  }
+
+  .login-options {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
   }
 
   .theme-toggle {
