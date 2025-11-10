@@ -32,8 +32,17 @@
         @click="goToPost(post.id)"
         shadow="hover"
       >
-        <div v-if="post.cover_image" class="post-cover">
-          <el-image :src="post.cover_image" fit="cover" />
+        <div class="post-cover">
+          <el-image
+            v-if="post.cover_image"
+            :src="post.cover_image"
+            fit="cover"
+            :lazy="true"
+          />
+          <div v-else class="cover-placeholder">
+            <el-icon :size="48"><Picture /></el-icon>
+            <span>暂无封面</span>
+          </div>
         </div>
         <div class="post-content">
           <h3 class="post-title">{{ post.title }}</h3>
@@ -77,6 +86,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Picture } from '@element-plus/icons-vue'
 import { supabase } from '@/lib/supabase'
 import type { Post, Tag } from '@/lib/supabase'
 
@@ -203,10 +213,31 @@ onMounted(() => {
         overflow: hidden;
         border-radius: 8px;
         margin-bottom: 16px;
+        background-color: var(--el-fill-color-light);
 
         .el-image {
           width: 100%;
           height: 100%;
+        }
+
+        .cover-placeholder {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: var(--el-text-color-placeholder);
+          background-color: var(--el-fill-color-lighter);
+
+          .el-icon {
+            margin-bottom: 8px;
+            opacity: 0.5;
+          }
+
+          span {
+            font-size: 14px;
+          }
         }
       }
 

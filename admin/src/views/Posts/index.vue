@@ -33,6 +33,19 @@
 
     <el-card class="posts-card" v-loading="loading">
       <el-table :data="posts" style="width: 100%">
+        <el-table-column label="封面" width="100">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.cover_image"
+              :src="row.cover_image"
+              fit="cover"
+              style="width: 80px; height: 60px; border-radius: 4px"
+              :preview-src-list="[row.cover_image]"
+              preview-teleported
+            />
+            <span v-else style="color: var(--el-text-color-placeholder)">无封面</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="title" label="标题" min-width="200" />
         <el-table-column prop="category.name" label="分类" width="120" />
         <el-table-column label="标签" width="200">

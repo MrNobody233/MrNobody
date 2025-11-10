@@ -14,6 +14,9 @@
         <el-button size="small" @click="insertSpoiler">
           <el-icon><hide /></el-icon> 隐藏文字
         </el-button>
+        <el-button size="small" @click="insertTooltip">
+          <el-icon><QuestionFilled /></el-icon> 提示
+        </el-button>
       </el-button-group>
       <el-button-group style="margin-left: 10px">
         <el-button size="small" @click="insertHeading">
@@ -96,9 +99,17 @@ const processSpoiler = (text: string) => {
   return text.replace(/!!(.+?)!!/g, '<span class="spoiler">$1</span>')
 }
 
+// 处理提示文字：??文字|提示内容??
+const processTooltip = (text: string) => {
+  // QuestionFilled 图标的 SVG
+  const questionIcon = '<svg class="tooltip-icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path fill="currentColor" d="M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896zm23.744 191.488c-52.096 0-92.928 14.784-123.2 44.352-30.976 29.568-45.76 70.4-45.76 122.496 0 9.216 1.024 18.432 2.048 27.648l2.048 12.288h94.72l-2.048-12.288c-1.024-6.144-1.024-12.288-1.024-18.432 0-25.6 5.12-45.568 15.36-60.416 10.24-14.848 25.6-22.272 46.08-22.272 20.48 0 35.84 7.424 46.08 22.272 10.24 14.848 15.36 34.816 15.36 60.416 0 20.48-3.072 38.912-9.216 55.296-6.144 16.384-15.36 30.72-27.648 42.24-12.288 12.288-27.648 23.04-46.08 32.256-18.432 9.216-40.96 18.432-67.584 27.648l-15.36 4.608c-5.12 1.024-9.216 3.072-12.288 6.144-3.072 3.072-5.12 6.144-6.144 10.24-1.024 4.096-1.024 8.192-1.024 12.288v40.96h94.72v-20.48c0-6.144 1.024-11.264 3.072-15.36 2.048-4.096 5.12-7.168 9.216-9.216l15.36-4.608c26.624-9.216 49.152-18.432 67.584-27.648 18.432-9.216 33.792-20.48 46.08-32.256 12.288-12.288 21.504-26.624 27.648-42.24 6.144-16.384 9.216-34.816 9.216-55.296 0-52.096-14.784-92.928-44.352-123.2-29.568-30.976-70.4-45.76-122.496-45.76zm-12.288 510.976a38.4 38.4 0 1 0 0 76.8 38.4 38.4 0 0 0 0-76.8z"/></svg>'
+  return text.replace(/\?\?(.+?)\|(.+?)\?\?/g, `<span class="tooltip-text" data-tooltip="$2">$1${questionIcon}</span>`)
+}
+
 const renderedHtml = computed(() => {
   let html = md.render(content.value)
   html = processSpoiler(html)
+  html = processTooltip(html)
   return html
 })
 
@@ -125,6 +136,10 @@ const insertStrikethrough = () => {
 
 const insertSpoiler = () => {
   insertText('!!', '!!' , '鼠标悬停查看')
+}
+
+const insertTooltip = () => {
+  insertText('??', '|提示内容??', '文字')
 }
 
 const insertHeading = () => {
@@ -182,10 +197,15 @@ const insertText = (prefix: string, suffix: string, placeholder: string) => {
     display: flex;
     height: 600px;
 
-    .editor-input,
+    .editor-input {
+      flex: 1;
+      overflow-y: auto;
+    }
+    
     .editor-preview {
       flex: 1;
       overflow-y: auto;
+      overflow-x: visible;
     }
 
     .editor-input {
@@ -210,6 +230,7 @@ const insertText = (prefix: string, suffix: string, placeholder: string) => {
     .editor-preview {
       padding: 20px;
       background-color: var(--el-bg-color);
+      overflow: visible;
 
       .preview-title {
         font-size: 14px;
@@ -223,6 +244,7 @@ const insertText = (prefix: string, suffix: string, placeholder: string) => {
         font-size: 15px;
         line-height: 1.8;
         color: var(--el-text-color-primary);
+        overflow: visible;
 
         :deep(h1),
         :deep(h2),
@@ -332,6 +354,68 @@ const insertText = (prefix: string, suffix: string, placeholder: string) => {
           &:hover {
             background-color: var(--el-fill-color-light);
             color: var(--el-text-color-primary);
+          }
+        }
+
+        :deep(.tooltip-text) {
+          position: relative;
+          display: inline-block;
+          color: var(--el-color-primary);
+          cursor: help;
+          border-bottom: 1px dashed var(--el-color-primary);
+
+          .tooltip-icon {
+            display: inline-block;
+            margin-left: 4px;
+            vertical-align: middle;
+            color: var(--el-color-primary);
+            flex-shrink: 0;
+          }
+
+          &::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 14px;
+            background-color: rgba(0, 0, 0, 0.95);
+            color: white;
+            font-size: 13px;
+            line-height: 1.5;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            max-width: 320px;
+            min-width: 100px;
+            width: max-content;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.3s, visibility 0.3s;
+            z-index: 999999;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+            word-wrap: break-word;
+          }
+
+          &::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 2px);
+            left: 50%;
+            transform: translateX(-50%);
+            border: 7px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.95);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.3s, visibility 0.3s;
+            z-index: 999999;
+          }
+
+          &:hover::after,
+          &:hover::before {
+            opacity: 1;
+            visibility: visible;
           }
         }
       }

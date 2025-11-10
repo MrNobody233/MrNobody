@@ -20,7 +20,13 @@
           </el-col>
 
           <el-col :span="8">
-            <el-form-item label="分类" prop="category_id">
+            <el-form-item>
+              <template #label>
+                <HelpTooltip
+                  text="分类"
+                  tooltip="选择文章所属的分类，用于文章分类展示"
+                />
+              </template>
               <el-select
                 v-model="form.category_id"
                 placeholder="请选择分类"
@@ -36,7 +42,13 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="标签">
+            <el-form-item>
+              <template #label>
+                <HelpTooltip
+                  text="标签"
+                  tooltip="可以为文章添加多个标签，用于文章分类和检索"
+                />
+              </template>
               <el-select
                 v-model="form.tagIds"
                 placeholder="请选择标签"
@@ -52,14 +64,28 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="封面图片">
-              <el-input
-                v-model="form.cover_image"
-                placeholder="请输入图片URL"
+            <el-form-item>
+              <template #label>
+                <HelpTooltip
+                  text="封面图片"
+                  tooltip="上传文章封面图片，建议尺寸为 1200x600 像素，支持 JPG、PNG、GIF 格式，文件大小不超过 5MB"
+                />
+              </template>
+              <CoverImageUpload
+                :image-url="form.cover_image"
+                @update:image-url="(url) => form.cover_image = url || ''"
+                @uploaded="(url) => form.cover_image = url"
+                @deleted="() => form.cover_image = ''"
               />
             </el-form-item>
 
-            <el-form-item label="摘要">
+            <el-form-item>
+              <template #label>
+                <HelpTooltip
+                  text="摘要"
+                  tooltip="文章摘要会显示在文章列表中，如果不填写，系统会自动截取文章内容的前150个字符作为摘要"
+                />
+              </template>
               <el-input
                 v-model="form.excerpt"
                 type="textarea"
@@ -68,7 +94,13 @@
               />
             </el-form-item>
 
-            <el-form-item label="状态">
+            <el-form-item>
+              <template #label>
+                <HelpTooltip
+                  text="状态"
+                  tooltip="草稿：文章不会在前台显示，只有作者可以查看；发布：文章会立即在前台显示"
+                />
+              </template>
               <el-radio-group v-model="form.status">
                 <el-radio label="draft">草稿</el-radio>
                 <el-radio label="published">发布</el-radio>
@@ -96,6 +128,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import type { Category, Tag } from '@/lib/supabase'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
+import CoverImageUpload from '@/components/CoverImageUpload.vue'
+import HelpTooltip from '@/components/HelpTooltip.vue'
 
 const route = useRoute()
 const router = useRouter()

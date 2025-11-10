@@ -101,11 +101,17 @@ DROP POLICY IF EXISTS "允许认证用户管理文章标签" ON post_tags;
 DROP POLICY IF EXISTS "允许所有人查看资料" ON profiles;
 DROP POLICY IF EXISTS "允许用户管理自己的资料" ON profiles;
 
--- Storage 策略
+-- Storage 策略（头像）
 DROP POLICY IF EXISTS "允许所有人查看头像" ON storage.objects;
 DROP POLICY IF EXISTS "允许认证用户上传头像" ON storage.objects;
 DROP POLICY IF EXISTS "允许用户更新自己的头像" ON storage.objects;
 DROP POLICY IF EXISTS "允许用户删除自己的头像" ON storage.objects;
+
+-- Storage 策略（文章封面）
+DROP POLICY IF EXISTS "允许所有人查看文章封面" ON storage.objects;
+DROP POLICY IF EXISTS "允许认证用户上传文章封面" ON storage.objects;
+DROP POLICY IF EXISTS "允许认证用户更新文章封面" ON storage.objects;
+DROP POLICY IF EXISTS "允许认证用户删除文章封面" ON storage.objects;
 
 -- ============================================
 -- 第四部分：创建数据表策略
@@ -196,7 +202,7 @@ CREATE INDEX IF NOT EXISTS idx_post_tags_post_id ON post_tags(post_id);
 CREATE INDEX IF NOT EXISTS idx_post_tags_tag_id ON post_tags(tag_id);
 
 -- ============================================
--- 第七部分：Storage 策略（需要先创建 avatars bucket）
+-- 第七部分：Storage 策略：头像（需要先创建 avatars bucket）
 -- ============================================
 -- 注意：这部分需要先在 Supabase Dashboard > Storage 中手动创建 bucket
 -- 1. 点击 Storage
@@ -235,6 +241,45 @@ USING (
 );
 
 -- ============================================
+-- Storage 策略：文章封面（需要先创建 covers bucket）
+-- ============================================
+-- 注意：这部分需要先在 Supabase Dashboard > Storage 中手动创建 bucket
+-- 1. 点击 Storage
+-- 2. 点击 New bucket
+-- 3. 名称: covers
+-- 4. 勾选 Public bucket
+-- 5. 创建后执行下面的策略
+
+-- 允许所有人查看文章封面
+CREATE POLICY "允许所有人查看文章封面"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'covers');
+
+-- 允许认证用户上传文章封面
+CREATE POLICY "允许认证用户上传文章封面"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'covers' 
+  AND auth.role() = 'authenticated'
+);
+
+-- 允许认证用户更新文章封面
+CREATE POLICY "允许认证用户更新文章封面"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'covers' 
+  AND auth.role() = 'authenticated'
+);
+
+-- 允许认证用户删除文章封面
+CREATE POLICY "允许认证用户删除文章封面"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'covers' 
+  AND auth.role() = 'authenticated'
+);
+
+-- ============================================
 -- 第八部分：为已存在的用户创建资料（可选）
 -- ============================================
 -- 如果你的账号是在创建 profiles 表之前注册的，执行此语句
@@ -255,7 +300,9 @@ USING (
 -- ============================================
 -- 
 -- 后续步骤：
--- 1. 在 Supabase Dashboard > Storage 中创建 "avatars" bucket（Public）
+-- 1. 在 Supabase Dashboard > Storage 中创建以下 bucket（Public）：
+--    - "avatars" bucket（用于用户头像）
+--    - "covers" bucket（用于文章封面）
 -- 2. 创建 bucket 后，Storage 策略会自动生效
 -- 3. 如果 Storage 策略创建失败，请检查 bucket 是否已创建
 -- 
@@ -264,5 +311,5 @@ USING (
 -- SELECT * FROM tags LIMIT 1;
 -- SELECT * FROM posts LIMIT 1;
 -- SELECT * FROM profiles LIMIT 1;
--- SELECT * FROM storage.buckets WHERE name = 'avatars';
+-- SELECT * FROM storage.buckets WHERE name IN ('avatars', 'covers');
 -- ============================================

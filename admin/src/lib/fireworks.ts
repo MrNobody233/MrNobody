@@ -2,25 +2,29 @@ let initialized = false
 
 type EffectMode = 'fireworks' | 'hearts' | 'confetti'
 
-let currentMode: EffectMode = (localStorage.getItem('fx:mode') as EffectMode) || 'fireworks'
-let enabled = localStorage.getItem('fx:enabled') !== 'false'
+// 动态读取模式，而不是在模块加载时固定
+function getCurrentMode(): EffectMode {
+  return (localStorage.getItem('fx:mode') as EffectMode) || 'fireworks'
+}
+
+function isEnabled(): boolean {
+  return localStorage.getItem('fx:enabled') !== 'false'
+}
 
 export function setEffectMode(mode: EffectMode) {
-  currentMode = mode
   localStorage.setItem('fx:mode', mode)
 }
 
 export function getEffectMode(): EffectMode {
-  return currentMode
+  return getCurrentMode()
 }
 
 export function setEffectEnabled(v: boolean) {
-  enabled = v
   localStorage.setItem('fx:enabled', String(v))
 }
 
 export function getEffectEnabled(): boolean {
-  return enabled
+  return isEnabled()
 }
 
 export function initClickFireworks() {
@@ -56,8 +60,11 @@ export function initClickFireworks() {
   loop()
 
   window.addEventListener('mousedown', (e) => {
-    if (!enabled) return
-    pushBalls(randBetween(10, 20), e.clientX, e.clientY)
+    if (!isEnabled()) return
+    const mode = getCurrentMode()
+    const base = mode === 'confetti' ? 20 : 10
+    const extra = mode === 'confetti' ? 30 : 10
+    pushBalls(randBetween(base, base + extra), e.clientX, e.clientY)
     document.body.classList.add('is-pressed')
     longPressTimer = window.setTimeout(() => {
       document.body.classList.add('is-longpress')
@@ -67,10 +74,12 @@ export function initClickFireworks() {
 
   window.addEventListener('mouseup', (e) => {
     if (longPressTimer) window.clearTimeout(longPressTimer)
-    if (!enabled) return void document.body.classList.remove('is-pressed')
+    if (!isEnabled()) return void document.body.classList.remove('is-pressed')
     if (longPressed) {
       document.body.classList.remove('is-longpress')
-      pushBalls(randBetween(50 + Math.ceil(multiplier), 100 + Math.ceil(multiplier)), e.clientX, e.clientY)
+      const mode = getCurrentMode()
+      const boostBase = mode === 'confetti' ? 120 : 50
+      pushBalls(randBetween(boostBase + Math.ceil(multiplier), boostBase + 60 + Math.ceil(multiplier)), e.clientX, e.clientY)
       longPressed = false
     }
     document.body.classList.remove('is-pressed')
@@ -98,6 +107,7 @@ export function initClickFireworks() {
     vy: number
     r: number
     color: string
+    rot: number
     constructor(x = origin.x, y = origin.y) {
       this.x = x
       this.y = y
@@ -105,8 +115,9 @@ export function initClickFireworks() {
       this.multiplier = longPressed ? randBetween(14 + multiplier, 15 + multiplier) : randBetween(6, 12)
       this.vx = (this.multiplier + Math.random() * 0.5) * Math.cos(this.angle)
       this.vy = (this.multiplier + Math.random() * 0.5) * Math.sin(this.angle)
-      this.r = randBetween(8, 12) + 3 * Math.random()
+      this.r = randBetween(6, 12) + 3 * Math.random()
       this.color = COLORS[(Math.random() * COLORS.length) | 0]
+      this.rot = Math.random() * Math.PI
     }
     update() {
       this.x += this.vx - normal.x
@@ -116,6 +127,11 @@ export function initClickFireworks() {
       this.r -= 0.3
       this.vx *= 0.9
       this.vy *= 0.9
+      const mode = getCurrentMode()
+      if (mode === 'confetti') {
+        this.vy += 0.12
+        this.rot += 0.1
+      }
     }
   }
 
@@ -129,16 +145,44 @@ export function initClickFireworks() {
     return Math.floor(Math.random() * max) + min
   }
 
+  function drawHeart(cx: number, cy: number, size: number) {
+    if (!ctx) return
+    const s = size / 12
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.scale(s, s)
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.bezierCurveTo(0, -3, -5, -6, -6, -3)
+    ctx.bezierCurveTo(-6, 0, -3, 1.5, 0, 4)
+    ctx.bezierCurveTo(3, 1.5, 6, 0, 6, -3)
+    ctx.bezierCurveTo(5, -6, 0, -3, 0, 0)
+    ctx.fill()
+    ctx.restore()
+  }
+
   function loop() {
     if (!ctx) return
     ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const mode = getCurrentMode()
     for (let i = 0; i < balls.length; i++) {
       const b = balls[i]
       if (b.r < 0) continue
       ctx.fillStyle = b.color
-      ctx.beginPath()
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2, false)
-      ctx.fill()
+      if (mode === 'fireworks') {
+        ctx.beginPath()
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2, false)
+        ctx.fill()
+      } else if (mode === 'hearts') {
+        drawHeart(b.x, b.y, b.r * 3)
+      } else {
+        // confetti
+        ctx.save()
+        ctx.translate(b.x, b.y)
+        ctx.rotate(b.rot)
+        ctx.fillRect(-b.r * 0.5, -b.r * 0.2, b.r, b.r * 0.4)
+        ctx.restore()
+      }
       b.update()
     }
     if (longPressed) {
